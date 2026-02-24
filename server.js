@@ -27,14 +27,31 @@ app.use('/api/live', liveRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/news', newsRoutes);
 
+// Route de santé
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'OK', database: 'connected' });
   } catch (err) {
-    res.status(500).json({ status: 'ERROR', database: 'disconnected' });
+    console.error('Health check DB error:', err.message);
+    res.status(500).json({ status: 'ERROR', database: 'disconnected', error: err.message });
   }
 });
 
+// Gestionnaire d'erreurs global
+app.use((err, req, res, next) => {
+  console.error('❌ Erreur non gérée:', err.stack);
+  res.status(500).json({ error: 'Une erreur interne est survenue' });
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+
+try {
+  app.listen(PORT, () => {
+    console.log(`🚀 Backend running on port ${PORT}`);
+    console.log(`🌍 Health check: http://localhost:${PORT}/api/health`);
+  });
+} catch (err) {
+  console.error('❌ Échec du démarrage du serveur:', err);
+  process.exit(1);
+}
