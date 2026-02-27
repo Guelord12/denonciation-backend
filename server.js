@@ -11,6 +11,8 @@ const commentRoutes = require('./routes/commentRoutes');
 const liveRoutes = require('./routes/liveRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 
@@ -46,12 +48,42 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-try {
-  app.listen(PORT, () => {
-    console.log(`🚀 Backend running on port ${PORT}`);
-    console.log(`🌍 Health check: http://localhost:${PORT}/api/health`);
-  });
-} catch (err) {
-  console.error('❌ Échec du démarrage du serveur:', err);
-  process.exit(1);
+/**
+ * Exécute un fichier SQL sur la base de données.
+ * Ignore l'erreur 42P07 (relation déjà existante) pour ne pas bloquer le démarrage.
+ * @param {string} filePath - Chemin relatif du fichier SQL (ex: 'schemas.sql')
+ */
+async function executeSqlFile(filePath) {
+  try {
+    const sql = fs.readFileSync(path.join(__dirname, filePath), 'utf8');
+    await pool.query(sql);
+    console.log(`✅ Fichier ${filePath} exécuté avec succès`);
+  } catch (err) {
+    // 42P07 = relation déjà existante (table, index, etc.)
+    if (err.code === '42P07') {
+      console.log(`ℹ️ Les objets existent déjà (${filePath}) – aucune action nécessaire.`);
+    } else {
+      console.error(`❌ Erreur lors de l'exécution de ${filePath}:`, err.message);
+      // On ne bloque pas le démarrage du serveur, mais on log l'erreur.
+    }
+  }
 }
+
+// Initialisation de la base de données avant de démarrer le serveur
+(async () => {
+  console.log('🔄 Vérification/création des tables...');
+  await executeSqlFile('schemas.sql');
+  await executeSqlFile('seed.sql');
+  console.log('✅ Initialisation de la base terminée.');
+
+  // Démarrage du serveur
+  try {
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend running on port ${PORT}`);
+      console.log(`🌍 Health check: http://localhost:${PORT}/api/health`);
+    });
+  } catch (err) {
+    console.error('❌ Échec du démarrage du serveur:', err);
+    process.exit(1);
+  }
+})();
