@@ -1,25 +1,24 @@
 -- ============================================================
 -- BASE DE DONNÉES : denonciation_app
--- Description : Application mobile Dénonciation RDC
 -- ============================================================
 
--- ============================================================
 -- TABLE : utilisateurs
--- ============================================================
 CREATE TABLE IF NOT EXISTS utilisateurs(
     id SERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     date_naissance DATE NOT NULL,
+    sexe VARCHAR(20) NOT NULL, -- Homme, Femme, Autre
+    avatar_choisi VARCHAR(50) DEFAULT 'default', -- homme, femme, autre, custom
+    avatar_url TEXT, -- si l'utilisateur upload une image personnalisée
     ville VARCHAR(100),
-    pays VARCHAR(100) DEFAULT 'RDC',
+    pays VARCHAR(100) NOT NULL,
     nationalite VARCHAR(100) DEFAULT 'Congolaise',
     telephone VARCHAR(30) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     mot_de_passe VARCHAR(255) NOT NULL,
     langue_preferee VARCHAR(50) DEFAULT 'français',
-    photo_profil TEXT,
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     dernier_acces TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE,
@@ -28,9 +27,7 @@ CREATE TABLE IF NOT EXISTS utilisateurs(
     terms_accepted_at TIMESTAMP
 );
 
--- ============================================================
--- TABLE : categories_abus
--- ============================================================
+-- TABLE : categories_abus (complète avec toutes les catégories)
 CREATE TABLE IF NOT EXISTS categories_abus(
     id SERIAL PRIMARY KEY,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -41,9 +38,7 @@ CREATE TABLE IF NOT EXISTS categories_abus(
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- ============================================================
 -- TABLE : signalements
--- ============================================================
 CREATE TABLE IF NOT EXISTS signalements(
     id SERIAL PRIMARY KEY,
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
@@ -71,9 +66,7 @@ CREATE TABLE IF NOT EXISTS signalements(
     shares_count INTEGER DEFAULT 0
 );
 
--- ============================================================
 -- TABLE : commentaires
--- ============================================================
 CREATE TABLE IF NOT EXISTS commentaires(
     id SERIAL PRIMARY KEY,
     signalement_id INTEGER REFERENCES signalements(id) ON DELETE CASCADE,
@@ -90,76 +83,34 @@ CREATE TABLE IF NOT EXISTS commentaires(
     parent_id INTEGER REFERENCES commentaires(id) ON DELETE CASCADE
 );
 
--- ============================================================
--- TABLE : notifications
--- ============================================================
-CREATE TABLE IF NOT EXISTS notifications(
+-- TABLE : pays (pour la liste déroulante)
+CREATE TABLE IF NOT EXISTS pays(
     id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    code VARCHAR(2) UNIQUE NOT NULL,
+    indicatif VARCHAR(10) NOT NULL,
+    flag TEXT
+);
+
+-- TABLE : villes (optionnel, mais peut être rempli avec les grandes villes)
+CREATE TABLE IF NOT EXISTS villes(
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    pays_id INTEGER REFERENCES pays(id) ON DELETE CASCADE,
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8)
+);
+
+-- TABLE : likes
+CREATE TABLE IF NOT EXISTS likes(
+    id SERIAL PRIMARY KEY,
+    signalement_id INTEGER REFERENCES signalements(id) ON DELETE CASCADE,
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
-    titre VARCHAR(255),
-    message TEXT,
-    type VARCHAR(50),
-    data JSONB,
-    lu BOOLEAN DEFAULT FALSE,
-    date_envoi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    date_like TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(signalement_id, utilisateur_id)
 );
 
--- ============================================================
--- TABLE : statistiques
--- ============================================================
-CREATE TABLE IF NOT EXISTS statistiques(
-    id SERIAL PRIMARY KEY,
-    categorie_id INTEGER REFERENCES categories_abus(id) ON DELETE SET NULL,
-    ville VARCHAR(100),
-    nombre_signalements INTEGER DEFAULT 0,
-    periode VARCHAR(20),
-    date_statistique TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================================
--- TABLE : actualites
--- ============================================================
-CREATE TABLE IF NOT EXISTS actualites(
-    id SERIAL PRIMARY KEY,
-    titre VARCHAR(500) NOT NULL,
-    description TEXT,
-    contenu TEXT,
-    categorie VARCHAR(50),
-    source VARCHAR(255),
-    url VARCHAR(500),
-    image_url TEXT,
-    date_publication TIMESTAMP,
-    langue VARCHAR(10) DEFAULT 'fr',
-    pays VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================================
--- TABLE : contacts
--- ============================================================
-CREATE TABLE IF NOT EXISTS contacts(
-    id SERIAL PRIMARY KEY,
-    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
-    sujet VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    statut VARCHAR(50) DEFAULT 'nouveau',
-    date_envoi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================================
--- TABLE : logs_systeme
--- ============================================================
-CREATE TABLE IF NOT EXISTS logs_systeme(
-    id SERIAL PRIMARY KEY,
-    type_log VARCHAR(50),
-    message TEXT,
-    details JSONB,
-    date_log TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================================
--- INDEXES pour optimiser les performances
--- ============================================================
+-- INDEXES
 CREATE INDEX IF NOT EXISTS idx_signalements_utilisateur ON signalements(utilisateur_id);
 CREATE INDEX IF NOT EXISTS idx_signalements_categorie ON signalements(categorie_id);
 CREATE INDEX IF NOT EXISTS idx_signalements_date ON signalements(date_signalement);
@@ -168,3 +119,5 @@ CREATE INDEX IF NOT EXISTS idx_commentaires_signalement ON commentaires(signalem
 CREATE INDEX IF NOT EXISTS idx_notifications_utilisateur ON notifications(utilisateur_id);
 CREATE INDEX IF NOT EXISTS idx_actualites_categorie ON actualites(categorie);
 CREATE INDEX IF NOT EXISTS idx_actualites_date ON actualites(date_publication);
+CREATE INDEX IF NOT EXISTS idx_likes_signalement ON likes(signalement_id);
+CREATE INDEX IF NOT EXISTS idx_likes_utilisateur ON likes(utilisateur_id);

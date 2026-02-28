@@ -11,6 +11,7 @@ const commentRoutes = require('./routes/commentRoutes');
 const liveRoutes = require('./routes/liveRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 const fs = require('fs');
 const path = require('path');
 
@@ -28,6 +29,7 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/live', liveRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Route de santé
 app.get('/api/health', async (req, res) => {
